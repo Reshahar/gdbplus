@@ -91,11 +91,10 @@ class AddPointFromIDA(gdb.Command):
                 bp_num = gdb.breakpoints()[-1].number
                 add_breakpoint.append(bp_num)
         except Exception as e:
-            msg(e)
+            #msg(e)
             msg("ap: The program is not being run!")
             return -1
 
-        pass
 
 def start(event):
     msg("test")
