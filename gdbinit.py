@@ -1,6 +1,7 @@
 import gdb
 import re
 
+
 class ToIDA(gdb.Command):
     """Get Offset of Process Base
 
@@ -61,9 +62,52 @@ class ToIDA(gdb.Command):
             msg("ti: The program is not being run!")
             return -1
 
+class AddPointFromIDA(gdb.Command):
+    """Add BreakPoint by Offset
+    Usage:
+        ap offset (offset default hex)
+    Example:
+        ap 2D02D7
+    """
+    def __init__(self):
+        super(self.__class__,self).__init__("ap",gdb.COMMAND_USER)
+
+    def invoke(self,args,from_tty):
+        argv = gdb.string_to_argv(args)
+        try:
+            proc_name = gdb.objfiles()[0].filename
+            result = gdb.execute("vmmap",to_string=True)
+            result = re.findall("(0x.+)(0x[0-9a-fA-F]+).*"+proc_name,result)
+            result = [y for x in result for y in x]
+            if len(result) == 0:
+                msg("ap: get process base address error!")
+                return -1
+            proc_addr_start = int(min(result,key=lambda x:int(x,16)),16)
+            proc_addr_end = int(max(result,key=lambda x:int(x,16)),16)
+            if len(argv) != 1:
+                msg("ap: please input a args")
+            else:
+                gdb.execute("b * "+hex(proc_addr_start+int(argv[0],16)))
+                bp_num = gdb.breakpoints()[-1].number
+                add_breakpoint.append(bp_num)
+        except Exception as e:
+            msg(e)
+            msg("ap: The program is not being run!")
+            return -1
+
+        pass
+
 def start(event):
     msg("test")
 
+def stop(event):
+    global add_breakpoint
+    for i in add_breakpoint:
+        gdb.execute("bc "+str(i))
+    add_breakpoint = []
 
-#gdb.events.cont.connect(start)
+add_breakpoint = []
+gdb.events.exited.connect(stop)
+
 ToIDA()
+AddPointFromIDA()
